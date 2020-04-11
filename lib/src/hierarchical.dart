@@ -131,7 +131,35 @@ class Hierarchical {
     _level = [currentLevel];
 
     while (_cluster.length > minCluster && currentLevel.linkage < maxLinkage) {
-      currentLevel = mergeCluster();
+      MinLinkage min;
+      for (int i = 0; i < _cluster.length; i++) {
+        for (int j = 0; j < i; j++) {
+          double linkage2 = getLinkage(_cluster[i], _cluster[j]);
+
+          if (min == null || linkage2 < min.linkage) {
+            min = MinLinkage(i: i, j: j, linkage: linkage2);
+          }
+        }
+      }
+      if (min.linkage > maxLinkage) {
+        break;
+      }
+      //create new cluster from old cluster (deep copy)
+      List<List<int>> newCluster = _cluster
+          .map((oneClus) => oneClus.map((index) => index).toList())
+          .toList();
+      //join cluster index j into i
+      newCluster[min.i].addAll(newCluster[min.j]);
+      //and remove cluster index j
+      newCluster.removeAt(min.j);
+      currentLevel = Level(
+          linkage: min.linkage,
+          cluster: newCluster,
+          joinFrom: min.j,
+          joinTo: min.i);
+
+      _level.add(currentLevel);
+      _cluster = newCluster;
     }
 
     //add other info
@@ -151,38 +179,6 @@ class Hierarchical {
     }
 
     return _cluster;
-  }
-
-  ///Merging two clusters.
-  ///
-  ///This is a process done for every hierarchical clustering level.
-  Level mergeCluster() {
-    MinLinkage min;
-    for (int i = 0; i < _cluster.length; i++) {
-      for (int j = 0; j < i; j++) {
-        double linkage = getLinkage(_cluster[i], _cluster[j]);
-
-        if (min == null || linkage < min.linkage) {
-          min = MinLinkage(i: i, j: j, linkage: linkage);
-        }
-      }
-    }
-
-    //create new cluster from old cluster (deep copy)
-    List<List<int>> cluster = _cluster
-        .map((oneClus) => oneClus.map((index) => index).toList())
-        .toList();
-    //join cluster index j into i
-    cluster[min.i].addAll(cluster[min.j]);
-    //and remove cluster index j
-    cluster.removeAt(min.j);
-    Level currentLevel = Level(
-        linkage: min.linkage, cluster: cluster, joinFrom: min.j, joinTo: min.i);
-
-    _level.add(currentLevel);
-    _cluster = cluster;
-
-    return currentLevel;
   }
 
   ///Calculate linkage between 2 clusters
